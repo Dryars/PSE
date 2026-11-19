@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fil Conducteur & Time Keeper — PSE 2</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            -webkit-font-smoothing: antialiased;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            header { position: static !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ======================================================================= -->
+    <!-- 1. BANDEAU TIME KEEPER ÉPURÉ                                            -->
+    <!-- ======================================================================= -->
+    <header class="bg-slate-900/95 backdrop-blur-md text-white shadow-lg sticky top-0 z-40 border-b border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 space-y-4">
+
+            <!-- LIGNE 1 : IDENTITÉ, HORLOGE & STATUT -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Titre -->
+                    <div class="flex items-center gap-2.5">
+                        <span class="bg-red-600/90 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-sm shrink-0">
+                            <i data-lucide="heart-pulse" class="w-4 h-4"></i>
+                        </span>
+                        <div>
+                            <h1 class="font-bold text-sm sm:text-base tracking-tight text-white leading-none">
+                                Fil Conducteur — PSE 2
+                            </h1>
+                            <span class="text-[11px] text-slate-400 font-medium">Suivi pédagogique & Time Keeper</span>
+                        </div>
+                    </div>
+
+                    <div class="h-5 w-px bg-slate-800 hidden sm:block"></div>
+
+                    <!-- Horloge réelle en direct -->
+                    <div class="bg-slate-950/60 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                        <span id="clock-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="live-clock" class="font-mono text-sm font-semibold text-slate-100 tracking-wide">--:--:--</span>
+                    </div>
+
+                    <!-- Badge dynamique d'écart temps -->
+                    <div id="time-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-emerald-950/60 text-emerald-300 border-emerald-700/60">
+                        <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                        <span id="time-status-text">À l'heure</span>
+                    </div>
+                </div>
+
+                <!-- Actions épurées (Sauvegarde auto + Réinitialiser uniquement) -->
+                <div class="flex items-center gap-2 no-print">
+                    <span id="save-status-pill" class="text-[11px] font-medium text-slate-400 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Enregistré
+                    </span>
+
+                    <button onclick="openResetModal()" title="Réinitialiser le programme" class="text-slate-400 hover:text-red-400 hover:bg-slate-800/80 px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Réinitialiser</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- LIGNE 2 : COMPARATEUR 2 COLONNES (RÉEL VS THÉORIQUE) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                
+                <!-- CARTE GAUCHE : OÙ ON EN EST (RÉEL) -->
+                <div class="bg-slate-800/70 border border-blue-500/40 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute top-0 left-0 bottom-0 w-1 bg-blue-500"></div>
+                    <div class="pl-2 space-y-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                                En cours (Réel)
+                            </span>
+                            <span id="real-time-range" class="font-mono text-xs font-medium text-blue-200 bg-blue-950/60 border border-blue-800/60 px-2 py-0.5 rounded">
+                                --:-- – --:--
+                            </span>
+                        </div>
+
+                        <div id="real-activity-title" class="text-sm sm:text-base font-bold text-white leading-snug line-clamp-2 min-h-[2.5rem] flex items-center">
+                            Chargement...
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                            <span id="real-trainer-badge" class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md bg-slate-900/80 text-slate-200 border border-slate-700/80">
+                                Non attribué
+                            </span>
+
+                            <a id="real-file-link-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition">
+                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                                <span id="real-file-link-label">Ouvrir le support</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARTE DROITE : OÙ ON DEVRAIT ÊTRE (THÉORIQUE) -->
+                <div class="bg-slate-800/40 border border-slate-700/70 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute top-0 left-0 bottom-0 w-1 bg-slate-600"></div>
+                    <div class="pl-2 space-y-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+                                Planning théorique
+                            </span>
+
+                            <div class="flex items-center gap-1.5">
+                                <!-- Simulation heure discrète -->
+                                <div class="flex items-center gap-1 bg-slate-900/70 border border-slate-700/80 rounded px-1.5 py-0.5 no-print" title="Simuler une heure pour tester">
+                                    <span class="text-[10px] font-medium text-slate-400">Simul:</span>
+                                    <input type="time" id="sim-time-input" onchange="setSimulatedTime(this.value)" class="bg-transparent text-[11px] font-mono text-amber-300 focus:outline-none w-14">
+                                    <button type="button" id="clear-sim-btn" onclick="clearSimulatedTime()" class="hidden text-[10px] font-bold text-red-400 hover:text-red-300 cursor-pointer" title="Revenir à l'heure réelle">✕</button>
+                                </div>
+
+                                <span id="theo-time-range" class="font-mono text-xs font-medium text-slate-300 bg-slate-900/70 border border-slate-700/80 px-2 py-0.5 rounded">
+                                    --:-- – --:--
+                                </span>
+                            </div>
+                        </div>
+
+                        <div id="theo-activity-title" class="text-sm sm:text-base font-semibold text-slate-200 leading-snug line-clamp-2 min-h-[2.5rem] flex items-center">
+                            Calcul horaire...
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                            <span id="theo-margin-info" class="text-[11px] text-slate-400">
+                                Tolérance : +15 min
+                            </span>
+                            <span id="theo-diff-badge" class="text-xs font-semibold text-slate-200 bg-slate-900/80 border border-slate-700/80 px-2.5 py-0.5 rounded-md">
+                                —
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LIGNE 3 : PILOTAGE & PROGRESSION -->
+            <div class="space-y-2.5 pt-0.5 no-print">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 flex-grow">
+                        <button onclick="prevActivity()" id="btn-prev" class="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 border border-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 cursor-pointer">
+                            <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                            <span>Précédent</span>
+                        </button>
+
+                        <button onclick="nextActivity()" id="btn-next" class="flex-grow sm:flex-grow-0 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+                            <span id="btn-next-label">Terminer & Passer à la suite</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="jump-select" class="text-xs font-medium text-slate-400 whitespace-nowrap shrink-0">
+                            Aller à :
+                        </label>
+                        <select id="jump-select" onchange="if(this.value) jumpToSlot(this.value)" class="w-full sm:w-72 bg-slate-800/90 text-slate-100 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <!-- Injecté par JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Barre de progression fine -->
+                <div class="flex items-center gap-3">
+                    <div class="flex-grow h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="day-progress-bar" class="h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <span id="day-progress-text" class="text-[11px] font-medium text-slate-400 shrink-0">
+                        0% (0 / 0)
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- TOAST DE NOTIFICATION -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 no-print"></div>
+
+    <!-- ======================================================================= -->
+    <!-- CONTENU PRINCIPAL                                                       -->
+    <!-- ======================================================================= -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- =================================================================== -->
+        <!-- 2. ÉQUIPE PÉDAGOGIQUE (ACCORDÉON REPLIABLE POUR ÉPURER L'INTERFACE)  -->
+        <!-- =================================================================== -->
+        <section class="bg-white rounded-xl shadow-xs border border-slate-200/90 overflow-hidden">
+            <div class="px-5 py-3.5 bg-white flex flex-wrap items-center justify-between gap-3">
+                <button type="button" onclick="toggleTeamPanel()" class="flex items-center gap-3 text-left group cursor-pointer">
+                    <span class="bg-slate-100 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 w-9 h-9 rounded-lg flex items-center justify-center transition shrink-0">
+                        <i data-lucide="users" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-sm font-bold text-slate-900">Équipe pédagogique</h2>
+                            <span id="present-summary-badge" class="text-xs font-medium bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">
+                                Présents ce jour : —
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500">Gérer les présences (J1–J4) et équilibrer la charge de travail</p>
+                    </div>
+                </button>
+
+                <div class="flex items-center gap-2 no-print">
+                    <button onclick="autoDistributeFairly()" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="scale" class="w-3.5 h-3.5"></i>
+                        <span>Répartir équitablement</span>
+                    </button>
+
+                    <button type="button" onclick="toggleTeamPanel()" id="toggle-team-btn" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer" title="Afficher / Masquer l'équipe">
+                        <i data-lucide="chevron-down" id="team-chevron" class="w-4 h-4 transition-transform duration-200"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contenu dépliable des formateurs -->
+            <div id="team-panel-body" class="border-t border-slate-100 p-5 bg-slate-50/50 space-y-4">
+                <div id="trainers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    <!-- Cartes formateurs injectées par JS -->
+                </div>
+                <div class="flex justify-end no-print">
+                    <button onclick="addTrainer()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                        <span>Ajouter un formateur</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- 3. PROGRAMME DU JOUR                                                -->
+        <!-- =================================================================== -->
+        <section class="bg-white rounded-xl shadow-xs border border-slate-200/90 overflow-hidden">
+            <!-- Barre d'onglets sobre -->
+            <div class="px-5 py-3.5 border-b border-slate-200/80 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-1 bg-slate-200/70 p-1 rounded-lg">
+                    <button onclick="selectDay(1)" id="day-tab-1" class="px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer">Jour 1</button>
+                    <button onclick="selectDay(2)" id="day-tab-2" class="px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer">Jour 2</button>
+                    <button onclick="selectDay(3)" id="day-tab-3" class="px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer">Jour 3</button>
+                    <button onclick="selectDay(4)" id="day-tab-4" class="px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer">Jour 4</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                    <span id="day-title-banner" class="font-bold text-slate-900"></span>
+                    <span class="text-slate-300">•</span>
+                    <span id="day-stats-summary" class="font-medium text-slate-500"></span>
+                </div>
+            </div>
+
+            <!-- Liste chronologique des activités -->
+            <div id="schedule-list" class="divide-y divide-slate-100">
+                <!-- Créneaux injectés par JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ======================================================================= -->
+    <!-- MODALE CONFIGURATION LIEN FICHIER                                       -->
+    <!-- ======================================================================= -->
+    <div id="link-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="link" class="w-4 h-4 text-blue-600"></i>
+                    <span>Associer un support pédagogique</span>
+                </h3>
+                <button onclick="closeModal('link-modal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form onsubmit="saveLinkForm(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="link-slot-id">
+                <p id="link-slot-subtitle" class="font-medium text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200/80 line-clamp-2"></p>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1.5">Lien du document (Drive, PDF, SharePoint...)</label>
+                    <input type="url" id="link-url-input" placeholder="https://..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1.5">Nom du bouton (optionnel)</label>
+                    <input type="text" id="link-label-input" placeholder="Ex: Fiche CC 003, Diaporama AVC..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <button type="button" onclick="clearSlotLink()" class="text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 cursor-pointer">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="closeModal('link-modal')" class="px-3.5 py-2 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">Annuler</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MODALE CONFIRMATION RÉINITIALISATION                                    -->
+    <!-- ======================================================================= -->
+    <div id="reset-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+            <div class="flex items-center gap-2.5 text-red-600">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                <h3 class="text-base font-bold text-slate-900">Réinitialiser le fil conducteur ?</h3>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Cette action effacera vos modifications locales (formateurs, attributions, liens associés, avancement) et restaurera la trame initiale PSE 2.
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal('reset-modal')" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">Annuler</button>
+                <button onclick="confirmReset()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white cursor-pointer">Réinitialiser</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- LOGIQUE JAVASCRIPT                                                      -->
+    <!-- ======================================================================= -->
+    <script>
+        const STORAGE_KEY = 'pse2_fil_conducteur_clean_v3';
+
+        const DEFAULT_DATA = {
+            activeDay: 1,
+            teamExpanded: false,
+            daysConfig: {
+                1: { label: "Jour 1 — Bilans, Rachis & Relevage à 4", maxOverflow: 15, targetHours: "7h20", targetCC: "4 CC" },
+                2: { label: "Jour 2 — Extraction, Plan dur & Relevage à 3", maxOverflow: 0, targetHours: "7h40", targetCC: "3-4 CC" },
+                3: { label: "Jour 3 — Malaises, Positions particulières & Traumas", maxOverflow: 30, targetHours: "7h40", targetCC: "7-8 CC" },
+                4: { label: "Jour 4 — Traumas spécifiques, Environnement & Synthèse", maxOverflow: 30, targetHours: "7h20", targetCC: "8 CC" }
+            },
+            currentStepIds: {
+                1: 'j1_01',
+                2: 'j2_01',
+                3: 'j3_01',
+                4: 'j4_01'
+            },
+            trainers: [
+                { id: 't1', name: 'Antoine L', color: '#2563eb', days: [1, 2, 3, 4] },
+                { id: 't2', name: 'Hadrien', color: '#dc2626', days: [1, 2, 3, 4] },
+                { id: 't3', name: 'Antoine F', color: '#059669', days: [2, 3, 4] },
+                { id: 't4', name: 'Pierick', color: '#d97706', days: [1, 2] },
+                { id: 't5', name: 'Marceau', color: '#7c3aed', days: [2] },
+                { id: 't6', name: 'Extérieur', color: '#0891b2', days: [2] }
+            ],
+            schedule: [
+                // ================= JOUR 1 =================
+                { id: 'j1_01', day: 1, start: '08:00', end: '08:30', title: 'Arrivée des formateurs', assignable: false, isBreak: false, isCC: false, trainer: 'all', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_02', day: 1, start: '08:30', end: '09:05', title: 'Présentation équipe/formation/évaluation (15m) + Attitude & comportement (10m) + Protection intervention particulière (10m)', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_03', day: 1, start: '09:05', end: '10:00', title: 'Rappel Bilans / Organisation du sac + CC 001 (Malaise) & CC 002 (Inconscient qui respire)', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_04', day: 1, start: '10:00', end: '10:15', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_05', day: 1, start: '10:15', end: '12:30', title: 'Traumatisme du dos et du cou, relevage brancard cuillère et immobilisation MID', assignable: true, isBreak: false, isCC: false, trainer: 't4', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_06', day: 1, start: '12:30', end: '13:30', title: 'Déjeuner', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_07', day: 1, start: '13:30', end: '14:00', title: 'Cas concret trauma dos / cou (CC 003)', assignable: true, isBreak: false, isCC: true, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_08', day: 1, start: '14:00', end: '14:30', title: 'Hypothermie & AVC', assignable: true, isBreak: false, isCC: false, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_09', day: 1, start: '14:30', end: '15:35', title: 'Relevage à 4 sauveteurs, pont amélioré et pont néerlandais à 4 sauveteurs', assignable: true, isBreak: false, isCC: false, trainer: 't4', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_10', day: 1, start: '15:35', end: '15:45', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_11', day: 1, start: '15:45', end: '16:45', title: 'Brancardage à 4 sauveteurs', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_12', day: 1, start: '16:45', end: '17:30', title: 'Cas concret AVC (CC 004)', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j1_13', day: 1, start: '17:30', end: '17:35', title: 'Fin de journée', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+
+                // ================= JOUR 2 =================
+                { id: 'j2_01', day: 2, start: '08:00', end: '08:30', title: 'Arrivée des formateurs', assignable: false, isBreak: false, isCC: false, trainer: 'all', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_02', day: 2, start: '08:30', end: '08:45', title: 'Réactivation', assignable: true, isBreak: false, isCC: false, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_03', day: 2, start: '08:45', end: '09:45', title: "Traumatisme du dos et du cou assis, extraction à l'aide de l'attelle cervico-thoracique (ACT)", assignable: true, isBreak: false, isCC: false, trainer: 't5', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_04', day: 2, start: '09:45', end: '10:25', title: "Traumatisme du dos et du cou debout, extraction à l'aide du plan dur (Victime debout)", assignable: true, isBreak: false, isCC: false, trainer: 't6', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_05', day: 2, start: '10:25', end: '10:35', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_06', day: 2, start: '10:35', end: '11:10', title: 'Cas concrets debout et/ou assis (CC 005)', assignable: true, isBreak: false, isCC: true, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_07', day: 2, start: '11:10', end: '12:15', title: 'Souffrances psychiques et comportements inhabituels (Fiche Activité 1)', assignable: true, isBreak: false, isCC: false, trainer: 't5', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_08', day: 2, start: '12:15', end: '13:15', title: 'Déjeuner', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_09', day: 2, start: '13:15', end: '13:30', title: 'Réactivation matinée', assignable: true, isBreak: false, isCC: false, trainer: 't6', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_10', day: 2, start: '13:30', end: '15:10', title: 'Traumatisme du dos et du cou, extraction et immobilisation plan dur (dos et ventre) + CC 006', assignable: true, isBreak: false, isCC: true, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_11', day: 2, start: '15:10', end: '15:20', title: 'Cours théorique Crise convulsive généralisée', assignable: true, isBreak: false, isCC: false, trainer: 't4', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_12', day: 2, start: '15:20', end: '15:30', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_13', day: 2, start: '15:30', end: '16:00', title: 'Relevage à trois sauveteurs, pont simple et pont néerlandais', assignable: true, isBreak: false, isCC: false, trainer: 't5', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_14', day: 2, start: '16:00', end: '16:50', title: 'Brancardage à trois sauveteurs', assignable: true, isBreak: false, isCC: false, trainer: 't6', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_15', day: 2, start: '16:50', end: '17:30', title: 'Cas concret au choix : brancardage 3 / souffrance psy / ACT (CC 007)', assignable: true, isBreak: false, isCC: true, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j2_16', day: 2, start: '17:30', end: '17:35', title: 'Fin de journée', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+
+                // ================= JOUR 3 =================
+                { id: 'j3_01', day: 3, start: '08:00', end: '08:30', title: 'Arrivée des formateurs', assignable: false, isBreak: false, isCC: false, trainer: 'all', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_02', day: 3, start: '08:30', end: '08:45', title: 'Réactivation week-end précédent', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_03', day: 3, start: '08:45', end: '09:25', title: 'Douleur thoracique (non traumatique) + CC (FS8)', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_04', day: 3, start: '09:25', end: '09:45', title: "Crise d'asthme", assignable: true, isBreak: false, isCC: false, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_05', day: 3, start: '09:45', end: '10:35', title: 'Relevage en position particulière (demi-assise) + CC (FS9)', assignable: true, isBreak: false, isCC: true, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_06', day: 3, start: '10:35', end: '10:45', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_07', day: 3, start: '10:45', end: '11:50', title: 'Relevage en position particulière (position latérale de sécurité) + CC (FS10)', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_08', day: 3, start: '11:50', end: '12:30', title: 'Cas concret au choix (souffrance psy ?) (FS11)', assignable: true, isBreak: false, isCC: true, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_09', day: 3, start: '12:30', end: '13:30', title: 'Déjeuner', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_10', day: 3, start: '13:30', end: '13:45', title: 'Réactivation matinée', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_11', day: 3, start: '13:45', end: '14:05', title: 'Cours théorique : Réaction allergique & Pendaison, strangulation', assignable: true, isBreak: false, isCC: false, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_12', day: 3, start: '14:05', end: '14:35', title: 'Cas concret (un des deux) (FS12)', assignable: true, isBreak: false, isCC: true, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_13', day: 3, start: '14:35', end: '14:50', title: 'Cours théorique piqûres morsures', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_14', day: 3, start: '14:50', end: '15:10', title: "Aide à la marche - Déplacement d'une victime non valide + Présenter alèse portoire", assignable: true, isBreak: false, isCC: false, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_15', day: 3, start: '15:10', end: '15:20', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_16', day: 3, start: '15:20', end: '15:30', title: 'Cours théorique Traumatisme du bassin', assignable: true, isBreak: false, isCC: false, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_17', day: 3, start: '15:30', end: '15:40', title: 'Cours théorique Traumatisme du crâne', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j3_18', day: 3, start: '15:40', end: '17:30', title: 'Cas concrets (1 chute de cheval et 2 au choix) (FS13-15) + Bilan de journée', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+
+                // ================= JOUR 4 =================
+                { id: 'j4_01', day: 4, start: '08:00', end: '08:30', title: 'Arrivée des formateurs', assignable: false, isBreak: false, isCC: false, trainer: 'all', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_02', day: 4, start: '08:30', end: '08:45', title: 'Réactivation veille', assignable: true, isBreak: false, isCC: false, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_03', day: 4, start: '08:45', end: '09:15', title: 'Traumatisme de la face et face antérieure du cou + Trauma abdomen + Trauma thorax', assignable: true, isBreak: false, isCC: false, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_04', day: 4, start: '09:15', end: '09:45', title: 'Cas concret (FS16)', assignable: true, isBreak: false, isCC: true, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_05', day: 4, start: '09:45', end: '10:45', title: 'Relevage en position particulière (victime à plat dos, cuisses fléchies) + CC (FS17)', assignable: true, isBreak: false, isCC: true, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_06', day: 4, start: '10:45', end: '11:00', title: 'Pause', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_07', day: 4, start: '11:00', end: '11:30', title: 'Cas concret au choix (FS18)', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_08', day: 4, start: '11:30', end: '12:15', title: 'Cours théorique : Affections liées à la chaleur & intoxications & accident électrique', assignable: true, isBreak: false, isCC: false, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_09', day: 4, start: '12:15', end: '13:15', title: 'Déjeuner', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_10', day: 4, start: '13:15', end: '13:45', title: 'Réactivation Cas concret (chaleur / AE / intox) (FS19)', assignable: true, isBreak: false, isCC: true, trainer: 't1', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_11', day: 4, start: '13:45', end: '16:45', title: 'Cas concrets synthèse (FS19-23)', assignable: true, isBreak: false, isCC: true, trainer: 't2', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_12', day: 4, start: '16:45', end: '17:00', title: 'Bilan de formation + clôture de formation', assignable: true, isBreak: false, isCC: false, trainer: 't3', done: false, linkUrl: '', linkLabel: '' },
+                { id: 'j4_13', day: 4, start: '17:00', end: '17:30', title: 'Fin / Marge débordement clôture', assignable: false, isBreak: true, isCC: false, trainer: '', done: false, linkUrl: '', linkLabel: '' }
+            ]
+        };
+
+        let state = null;
+        let simulatedTimeStr = null;
+
+        // --- INITIALISATION ---
+        function initApp() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    state = JSON.parse(raw);
+                    if (!state.daysConfig) state.daysConfig = JSON.parse(JSON.stringify(DEFAULT_DATA.daysConfig));
+                    if (!state.currentStepIds) state.currentStepIds = { 1: 'j1_01', 2: 'j2_01', 3: 'j3_01', 4: 'j4_01' };
+                    if (typeof state.teamExpanded !== 'boolean') state.teamExpanded = false;
+                } catch (e) {
+                    state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                }
+            } else {
+                state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                saveState(false);
+            }
+
+            updateTeamPanelVisibility();
+            renderAll();
+            tickClock();
+            setInterval(tickClock, 1000);
+        }
+
+        function saveState(showToast = false) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            const pill = document.getElementById('save-status-pill');
+            if (pill) {
+                const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                pill.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Enregistré (${t})`;
+                refreshIcons();
+            }
+            if (showToast) notify("Modifications enregistrées", "success");
+        }
+
+        function refreshIcons() {
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+        }
+
+        function notify(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-slate-900 border-emerald-500/60 text-white',
+                error: 'bg-red-950 border-red-500/60 text-white',
+                info: 'bg-slate-900 border-slate-700 text-white'
+            };
+            toast.className = `${colors[type] || colors.info} border px-4 py-2.5 rounded-lg shadow-lg text-xs font-medium flex items-center gap-2 transition-opacity duration-300`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2200);
+        }
+
+        // --- ACCORDÉON ÉQUIPE ---
+        function toggleTeamPanel() {
+            state.teamExpanded = !state.teamExpanded;
+            saveState(false);
+            updateTeamPanelVisibility();
+        }
+
+        function updateTeamPanelVisibility() {
+            const body = document.getElementById('team-panel-body');
+            const chevron = document.getElementById('team-chevron');
+            if (state.teamExpanded) {
+                body.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                body.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // --- UTILITAIRES HORAIRES ---
+        function toMins(hhmm) {
+            if (!hhmm) return 0;
+            const [h, m] = hhmm.split(':').map(Number);
+            return h * 60 + (m || 0);
+        }
+
+        function fmtHM(mins) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${h}h${m < 10 ? '0' : ''}${m}`;
+        }
+
+        function isAssignableSlot(slot) {
+            return slot.assignable === true && !slot.isBreak;
+        }
+
+        function getDaySlots(day) {
+            return state.schedule
+                .filter(s => s.day === day)
+                .sort((a, b) => toMins(a.start) - toMins(b.start));
+        }
+
+        function getCurrentRealSlot(day) {
+            const slots = getDaySlots(day);
+            if (!slots.length) return null;
+            const targetId = state.currentStepIds[day];
+            let slot = slots.find(s => s.id === targetId);
+            if (!slot) {
+                slot = slots.find(s => !s.done) || slots[slots.length - 1];
+                state.currentStepIds[day] = slot.id;
+            }
+            return slot;
+        }
+
+        function getTheoreticalSlotInfo(day, nowMins) {
+            const slots = getDaySlots(day);
+            if (!slots.length) return { slot: null, phase: 'none' };
+
+            const firstStart = toMins(slots[0].start);
+            const endLimit = 17 * 60 + 30;
+
+            if (nowMins < firstStart) {
+                return { slot: slots[0], phase: 'before' };
+            }
+            if (nowMins >= endLimit) {
+                return { slot: slots[slots.length - 1], phase: 'after' };
+            }
+
+            const active = slots.find(s => nowMins >= toMins(s.start) && nowMins < toMins(s.end));
+            if (active) {
+                return { slot: active, phase: 'during' };
+            }
+
+            return { slot: slots[slots.length - 1], phase: 'after' };
+        }
+
+        // --- SIMULATION HEURE TEST ---
+        function setSimulatedTime(val) {
+            if (val) {
+                simulatedTimeStr = val;
+                document.getElementById('clear-sim-btn').classList.remove('hidden');
+                tickClock();
+                notify(`Heure simulée : ${val}`, "info");
+            }
+        }
+
+        function clearSimulatedTime() {
+            simulatedTimeStr = null;
+            document.getElementById('sim-time-input').value = '';
+            document.getElementById('clear-sim-btn').classList.add('hidden');
+            tickClock();
+            notify("Retour à l'heure réelle", "info");
+        }
+
+        // --- NAVIGATION & COMMANDES TIME KEEPER ---
+        function selectDay(day) {
+            state.activeDay = day;
+            saveState(false);
+            renderAll();
+            tickClock();
+        }
+
+        function nextActivity() {
+            const day = state.activeDay;
+            const slots = getDaySlots(day);
+            if (!slots.length) return;
+
+            const current = getCurrentRealSlot(day);
+            const idx = slots.findIndex(s => s.id === current.id);
+            current.done = true;
+
+            if (idx >= 0 && idx < slots.length - 1) {
+                const next = slots[idx + 1];
+                next.done = false;
+                state.currentStepIds[day] = next.id;
+                saveState(false);
+                renderAll();
+                tickClock();
+                scrollToSlot(next.id);
+            } else {
+                saveState(false);
+                renderAll();
+                tickClock();
+                notify(`Journée ${day} terminée !`, "success");
+            }
+        }
+
+        function prevActivity() {
+            const day = state.activeDay;
+            const slots = getDaySlots(day);
+            if (!slots.length) return;
+
+            const current = getCurrentRealSlot(day);
+            const idx = slots.findIndex(s => s.id === current.id);
+
+            if (idx > 0) {
+                current.done = false;
+                const prev = slots[idx - 1];
+                prev.done = false;
+                state.currentStepIds[day] = prev.id;
+                saveState(false);
+                renderAll();
+                tickClock();
+                scrollToSlot(prev.id);
+            }
+        }
+
+        function jumpToSlot(slotId) {
+            const day = state.activeDay;
+            const slots = getDaySlots(day);
+            const targetIdx = slots.findIndex(s => s.id === slotId);
+            if (targetIdx === -1) return;
+
+            slots.forEach((s, idx) => {
+                s.done = idx < targetIdx;
+            });
+            state.currentStepIds[day] = slotId;
+            saveState(false);
+            renderAll();
+            tickClock();
+        }
+
+        function scrollToSlot(slotId) {
+            setTimeout(() => {
+                const el = document.getElementById(`row-${slotId}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 50);
+        }
+
+        // --- HORLOGE EN DIRECT & COMPARATEUR RÉEL VS THÉORIQUE ---
+        let lastTheoSlotId = null;
+
+        function tickClock() {
+            const now = new Date();
+            let nowMins;
+
+            if (simulatedTimeStr) {
+                const [sh, sm] = simulatedTimeStr.split(':').map(Number);
+                nowMins = sh * 60 + sm;
+                document.getElementById('live-clock').textContent = `${simulatedTimeStr}:00 (Test)`;
+                document.getElementById('clock-dot').className = "w-2 h-2 rounded-full bg-amber-400";
+            } else {
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                nowMins = now.getHours() * 60 + now.getMinutes();
+                document.getElementById('live-clock').textContent = `${hh}:${mm}:${ss}`;
+                document.getElementById('clock-dot').className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+            }
+
+            const day = state.activeDay;
+            const slots = getDaySlots(day);
+            const dayCfg = state.daysConfig[day] || { maxOverflow: 15 };
+            const marginMax = dayCfg.maxOverflow;
+
+            document.getElementById('theo-margin-info').textContent = marginMax === 0
+                ? `Tolérance Jour ${day} : 0 min (Strict)`
+                : `Tolérance Jour ${day} : +${marginMax} min`;
+
+            if (!slots.length) return;
+
+            // 1. CARTE GAUCHE : EN COURS (RÉEL)
+            const realSlot = getCurrentRealSlot(day);
+            const realIdx = slots.findIndex(s => s.id === realSlot.id);
+            const doneCount = slots.filter(s => s.done).length;
+            const allDone = doneCount === slots.length;
+            const pct = Math.round((doneCount / slots.length) * 100);
+            const realTrainer = state.trainers.find(t => t.id === realSlot.trainer);
+
+            document.getElementById('real-time-range').textContent = `${realSlot.start} – ${realSlot.end}`;
+            document.getElementById('real-activity-title').textContent = allDone
+                ? `Journée ${day} terminée`
+                : realSlot.title;
+
+            const trainerBadge = document.getElementById('real-trainer-badge');
+            if (allDone) {
+                trainerBadge.innerHTML = `<span class="text-emerald-400">Toutes les séquences validées</span>`;
+            } else if (realSlot.trainer === 'all') {
+                trainerBadge.innerHTML = `<i data-lucide="users" class="w-3 h-3 text-blue-400"></i> <span>Tous les formateurs</span>`;
+            } else if (realTrainer) {
+                trainerBadge.innerHTML = `<span class="w-2 h-2 rounded-full" style="background-color:${realTrainer.color}"></span> ${realTrainer.name}`;
+            } else {
+                trainerBadge.innerHTML = `<span class="text-slate-400">Non attribué</span>`;
+            }
+
+            const linkBtn = document.getElementById('real-file-link-btn');
+            const linkLabel = document.getElementById('real-file-link-label');
+            if (!allDone && realSlot.linkUrl && realSlot.linkUrl.trim() !== '') {
+                linkBtn.href = realSlot.linkUrl;
+                linkLabel.textContent = realSlot.linkLabel?.trim() || 'Ouvrir le support';
+                linkBtn.classList.remove('hidden');
+            } else {
+                linkBtn.classList.add('hidden');
+            }
+
+            // Barre de progression
+            document.getElementById('day-progress-bar').style.width = `${pct}%`;
+            document.getElementById('day-progress-text').textContent = `${pct}% (${doneCount}/${slots.length})`;
+
+            // Boutons Précédent / Suivant
+            document.getElementById('btn-prev').disabled = (realIdx <= 0 && !allDone);
+            const nextLabel = document.getElementById('btn-next-label');
+            if (allDone) {
+                nextLabel.textContent = `Journée ${day} terminée`;
+            } else if (realIdx === slots.length - 1) {
+                nextLabel.textContent = `Clôturer la journée`;
+            } else {
+                nextLabel.textContent = `Terminer & Passer à la suite`;
+            }
+
+            // 2. CARTE DROITE : PLANNING THÉORIQUE
+            const theoInfo = getTheoreticalSlotInfo(day, nowMins);
+            const theoSlot = theoInfo.slot;
+            const phase = theoInfo.phase;
+            const currentTheoId = phase === 'during' && theoSlot ? theoSlot.id : null;
+
+            if (currentTheoId !== lastTheoSlotId) {
+                lastTheoSlotId = currentTheoId;
+                renderSchedule();
+            }
+
+            if (phase === 'before') {
+                document.getElementById('theo-time-range').textContent = `Début ${slots[0].start}`;
+                document.getElementById('theo-activity-title').textContent = `Avant début — ${slots[0].title}`;
+                document.getElementById('theo-diff-badge').textContent = `Démarre dans ${toMins(slots[0].start) - nowMins} min`;
+            } else if (phase === 'after') {
+                document.getElementById('theo-time-range').textContent = `17:30`;
+                document.getElementById('theo-activity-title').textContent = `Fin théorique de journée`;
+                document.getElementById('theo-diff-badge').textContent = `Terminé`;
+            } else {
+                document.getElementById('theo-time-range').textContent = `${theoSlot.start} – ${theoSlot.end}`;
+                document.getElementById('theo-activity-title').textContent = theoSlot.title;
+                const rem = Math.max(0, toMins(theoSlot.end) - nowMins);
+                document.getElementById('theo-diff-badge').textContent = `Reste : ${rem} min`;
+            }
+
+            // 3. BADGE D'ÉTAT TEMPOREL
+            const badge = document.getElementById('time-status-badge');
+            const badgeText = document.getElementById('time-status-text');
+
+            if (allDone) {
+                badge.className = "px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-emerald-950/60 text-emerald-300 border-emerald-700/60";
+                badgeText.textContent = "Journée terminée";
+                refreshIcons();
+                return;
+            }
+
+            const realStart = toMins(realSlot.start);
+            const realEnd = toMins(realSlot.end);
+
+            if (phase === 'before') {
+                badge.className = "px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-slate-800 text-slate-300 border-slate-700";
+                badgeText.textContent = `Début à ${slots[0].start}`;
+            } else if (nowMins < realStart) {
+                const ahead = realStart - nowMins;
+                badge.className = "px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-emerald-950/60 text-emerald-300 border-emerald-700/60";
+                badgeText.textContent = `En avance (+${ahead} min)`;
+            } else if (nowMins >= realStart && nowMins <= realEnd) {
+                badge.className = "px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-blue-950/60 text-blue-300 border-blue-700/60";
+                badgeText.textContent = "À l'heure";
+            } else {
+                const delay = nowMins - realEnd;
+                if (marginMax > 0 && delay <= marginMax) {
+                    badge.className = "px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border-amber-500/50";
+                    badgeText.textContent = `Débordement toléré (-${delay}/${marginMax} min)`;
+                } else {
+                    badge.className = "px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 bg-red-600 text-white border-red-400";
+                    badgeText.textContent = `Retard : -${delay} min`;
+                }
+            }
+            refreshIcons();
+        }
+
+        // --- GESTION DES FORMATEURS & ÉQUITÉ ---
+        function computeTrainerStats() {
+            const map = {};
+            state.trainers.forEach(t => {
+                const daysPresent = Array.isArray(t.days) ? t.days.length : 0;
+                map[t.id] = {
+                    ...t,
+                    activitiesCount: 0,
+                    totalMins: 0,
+                    totalCC: 0,
+                    daysPresent,
+                    avgMinsPerDay: 0
+                };
+            });
+
+            state.schedule.forEach(slot => {
+                if (isAssignableSlot(slot) && slot.trainer && slot.trainer !== 'all' && map[slot.trainer]) {
+                    const dur = Math.max(0, toMins(slot.end) - toMins(slot.start));
+                    map[slot.trainer].activitiesCount += 1;
+                    map[slot.trainer].totalMins += dur;
+                    if (slot.isCC) map[slot.trainer].totalCC += 1;
+                }
+            });
+
+            Object.values(map).forEach(st => {
+                st.avgMinsPerDay = st.daysPresent > 0 ? Math.round(st.totalMins / st.daysPresent) : 0;
+            });
+
+            return map;
+        }
+
+        function autoDistributeFairly() {
+            const trainers = state.trainers;
+            if (!trainers.length) return;
+
+            for (let d = 1; d <= 4; d++) {
+                const hasWork = state.schedule.some(s => s.day === d && isAssignableSlot(s));
+                const present = trainers.filter(t => (t.days || []).includes(d));
+                if (hasWork && !present.length) {
+                    notify(`Aucun formateur présent sur le Jour ${d}`, "error");
+                    return;
+                }
+            }
+
+            const load = {};
+            trainers.forEach(t => {
+                load[t.id] = {
+                    mins: 0,
+                    cc: 0,
+                    daysCount: Math.max(1, (t.days || []).length)
+                };
+            });
+
+            const workSlots = state.schedule
+                .filter(s => isAssignableSlot(s))
+                .sort((a, b) => (a.day - b.day) || (toMins(a.start) - toMins(b.start)));
+
+            workSlots.forEach(slot => {
+                const dur = Math.max(0, toMins(slot.end) - toMins(slot.start));
+                const ccWeight = slot.isCC ? 1 : 0;
+                const available = trainers.filter(t => (t.days || []).includes(slot.day));
+                if (!available.length) return;
+
+                let best = available[0];
+                let minScore = Infinity;
+
+                available.forEach(t => {
+                    const l = load[t.id];
+                    const rawScore = l.mins + (l.cc * 35);
+                    const normalized = rawScore / l.daysCount;
+                    if (normalized < minScore) {
+                        minScore = normalized;
+                        best = t;
+                    }
+                });
+
+                slot.trainer = best.id;
+                load[best.id].mins += dur;
+                load[best.id].cc += ccWeight;
+            });
+
+            saveState(false);
+            renderAll();
+            tickClock();
+            notify("Répartition équitable appliquée", "success");
+        }
+
+        function renderTrainers() {
+            const day = state.activeDay;
+            const presentToday = state.trainers.filter(t => (t.days || []).includes(day));
+            const badge = document.getElementById('present-summary-badge');
+
+            if (presentToday.length > 0) {
+                badge.className = "text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/70 px-2.5 py-0.5 rounded-full";
+                badge.textContent = `Présents J${day} : ${presentToday.map(t => t.name).join(', ')}`;
+            } else {
+                badge.className = "text-xs font-medium bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full";
+                badge.textContent = `Aucun formateur sur J${day}`;
+            }
+
+            const stats = computeTrainerStats();
+            const grid = document.getElementById('trainers-grid');
+
+            grid.innerHTML = Object.values(stats).map(t => {
+                const isPresentToday = (t.days || []).includes(day);
+                return `
+                    <div class="rounded-xl border p-3.5 flex flex-col justify-between gap-3 transition bg-white ${isPresentToday ? 'border-slate-200 shadow-2xs' : 'border-slate-200/70 opacity-65'}">
+                        <!-- Nom éditable + suppression -->
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0 flex-grow">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${t.color}"></span>
+                                <input type="text" value="${t.name}" onchange="renameTrainer('${t.id}', this.value)" class="font-bold text-xs sm:text-sm text-slate-900 bg-transparent focus:outline-none focus:underline w-full">
+                            </div>
+                            ${state.trainers.length > 1 ? `
+                                <button onclick="removeTrainer('${t.id}')" title="Supprimer" class="text-slate-400 hover:text-red-600 p-1 rounded no-print cursor-pointer">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <!-- 4 boutons cliquables J1 / J2 / J3 / J4 -->
+                        <div class="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                            <span class="text-[11px] font-medium text-slate-500">Présence</span>
+                            <div class="flex items-center gap-1">
+                                ${[1, 2, 3, 4].map(d => {
+                                    const active = (t.days || []).includes(d);
+                                    return `
+                                        <button type="button" onclick="toggleTrainerDay('${t.id}', ${d})" class="px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${active ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-100'}">
+                                            J${d}
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Compteurs -->
+                        <div class="grid grid-cols-3 gap-1.5 text-center">
+                            <div class="bg-slate-50 rounded-lg py-1.5 px-1">
+                                <div class="text-[10px] text-slate-400 font-medium">Total</div>
+                                <div class="text-xs font-bold text-slate-800">${fmtHM(t.totalMins)}</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg py-1.5 px-1">
+                                <div class="text-[10px] text-slate-400 font-medium">Cas Concrets</div>
+                                <div class="text-xs font-bold text-blue-600">${t.totalCC} CC</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg py-1.5 px-1">
+                                <div class="text-[10px] text-slate-400 font-medium">Moy. / jour</div>
+                                <div class="text-xs font-bold text-slate-800">${fmtHM(t.avgMinsPerDay)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleTrainerDay(trainerId, day) {
+            const tr = state.trainers.find(t => t.id === trainerId);
+            if (!tr) return;
+            if (!Array.isArray(tr.days)) tr.days = [];
+            if (tr.days.includes(day)) {
+                tr.days = tr.days.filter(d => d !== day);
+            } else {
+                tr.days.push(day);
+                tr.days.sort();
+            }
+            saveState(false);
+            renderAll();
+            tickClock();
+        }
+
+        function renameTrainer(id, name) {
+            const tr = state.trainers.find(t => t.id === id);
+            if (tr && name.trim()) {
+                tr.name = name.trim();
+                saveState(false);
+                renderAll();
+                tickClock();
+            }
+        }
+
+        function addTrainer() {
+            const palette = ['#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+            const idx = state.trainers.length;
+            state.trainers.push({
+                id: 't_' + Date.now(),
+                name: `Formateur ${idx + 1}`,
+                color: palette[idx % palette.length],
+                days: [1, 2, 3, 4]
+            });
+            saveState(true);
+            renderAll();
+        }
+
+        function removeTrainer(id) {
+            if (state.trainers.length <= 1) return;
+            state.trainers = state.trainers.filter(t => t.id !== id);
+            state.schedule.forEach(s => {
+                if (s.trainer === id) s.trainer = '';
+            });
+            saveState(true);
+            renderAll();
+            tickClock();
+        }
+
+        // --- PROGRAMME PAR JOUR & LIENS CONFIGURABLES ---
+        function renderAll() {
+            renderDayTabs();
+            renderTrainers();
+            renderSchedule();
+            refreshIcons();
+        }
+
+        function renderDayTabs() {
+            [1, 2, 3, 4].forEach(d => {
+                const isActive = d === state.activeDay;
+                const btn = document.getElementById(`day-tab-${d}`);
+                if (btn) {
+                    btn.className = isActive
+                        ? "px-3.5 py-1.5 rounded-md text-xs font-bold transition bg-white text-slate-900 shadow-2xs cursor-pointer"
+                        : "px-3.5 py-1.5 rounded-md text-xs font-medium transition text-slate-600 hover:text-slate-900 cursor-pointer";
+                    btn.textContent = `Jour ${d}`;
+                }
+            });
+        }
+
+        function renderSchedule() {
+            const day = state.activeDay;
+            const slots = getDaySlots(day);
+            const currentReal = getCurrentRealSlot(day);
+            const allDone = slots.length > 0 && slots.every(s => s.done);
+            const cfg = state.daysConfig[day];
+
+            const now = new Date();
+            let nowMins = now.getHours() * 60 + now.getMinutes();
+            if (simulatedTimeStr) {
+                const [sh, sm] = simulatedTimeStr.split(':').map(Number);
+                nowMins = sh * 60 + sm;
+            }
+            const theoInfo = getTheoreticalSlotInfo(day, nowMins);
+            const theoActiveId = theoInfo.phase === 'during' && theoInfo.slot ? theoInfo.slot.id : null;
+
+            // Menu déroulant Aller à
+            const jumpSelect = document.getElementById('jump-select');
+            jumpSelect.innerHTML = slots.map(s => `
+                <option value="${s.id}" ${!allDone && currentReal && currentReal.id === s.id ? 'selected' : ''}>
+                    ${s.start} — ${s.title}
+                </option>
+            `).join('');
+
+            // En-tête du bloc programme
+            document.getElementById('day-title-banner').textContent = cfg.label;
+            document.getElementById('day-stats-summary').textContent = `${cfg.targetHours} • ${cfg.targetCC} • Tolérance +${cfg.maxOverflow} min`;
+
+            const presentTrainers = state.trainers.filter(t => (t.days || []).includes(day));
+            const absentTrainers = state.trainers.filter(t => !(t.days || []).includes(day));
+
+            const listEl = document.getElementById('schedule-list');
+            listEl.innerHTML = slots.map(slot => {
+                const dur = Math.max(0, toMins(slot.end) - toMins(slot.start));
+                const isBreak = slot.isBreak === true;
+                const isAssignable = isAssignableSlot(slot);
+                const isCurrent = !allDone && currentReal && currentReal.id === slot.id;
+                const isTheoHere = theoActiveId === slot.id;
+                const trainer = state.trainers.find(t => t.id === slot.trainer);
+                const isAbsent = trainer && !(trainer.days || []).includes(day);
+                const hasLink = slot.linkUrl && slot.linkUrl.trim() !== '';
+
+                // Contrôles de statut épurés (bouton "Y aller" uniquement au survol sur desktop ou subtil)
+                let statusControlsHtml = '';
+                if (isCurrent) {
+                    statusControlsHtml = `
+                        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> En cours
+                        </span>`;
+                } else if (slot.done) {
+                    statusControlsHtml = `
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-1 rounded-md text-xs font-medium text-emerald-700 bg-emerald-50 flex items-center gap-1">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i> Fait
+                            </span>
+                            <button onclick="jumpToSlot('${slot.id}')" title="Revenir à cette séquence" class="no-print opacity-0 group-hover:opacity-100 focus:opacity-100 px-2 py-1 rounded-md text-xs font-medium text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 transition cursor-pointer">
+                                Reprendre
+                            </button>
+                        </div>`;
+                } else {
+                    statusControlsHtml = `
+                        <button onclick="jumpToSlot('${slot.id}')" title="Positionner le suivi ici" class="no-print opacity-60 group-hover:opacity-100 px-2.5 py-1 rounded-md text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 border border-transparent hover:border-slate-200 transition cursor-pointer">
+                            Aller ici
+                        </button>`;
+                }
+
+                // Bouton lien fichier discret
+                let linkHtml = '';
+                if (hasLink) {
+                    const lbl = slot.linkLabel?.trim() || 'Support';
+                    linkHtml = `
+                        <div class="inline-flex items-center rounded-md border border-amber-200 bg-amber-50/80 overflow-hidden">
+                            <a href="${slot.linkUrl}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 flex items-center gap-1">
+                                <i data-lucide="file-text" class="w-3 h-3 text-amber-600"></i> ${lbl}
+                            </a>
+                            <button onclick="openLinkModal('${slot.id}')" title="Modifier le lien" class="px-1.5 py-1 text-amber-700 hover:bg-amber-200/70 border-l border-amber-200 cursor-pointer no-print">
+                                <i data-lucide="pencil" class="w-3 h-3"></i>
+                            </button>
+                        </div>`;
+                } else {
+                    linkHtml = `
+                        <button onclick="openLinkModal('${slot.id}')" title="Associer un fichier ou lien" class="no-print opacity-40 group-hover:opacity-100 px-2 py-1 rounded-md text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center gap-1 transition cursor-pointer">
+                            <i data-lucide="paperclip" class="w-3.5 h-3.5"></i>
+                            <span class="hidden sm:inline">Support</span>
+                        </button>`;
+                }
+
+                let rowClasses = "group px-5 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition ";
+                if (isCurrent) {
+                    rowClasses += "bg-blue-50/70 border-l-4 border-l-blue-600";
+                } else if (slot.done) {
+                    rowClasses += "bg-slate-50/40 opacity-60";
+                } else if (isBreak) {
+                    rowClasses += "bg-slate-50/80";
+                } else {
+                    rowClasses += "hover:bg-slate-50/60";
+                }
+
+                let dotColor = '#cbd5e1';
+                if (slot.trainer === 'all') dotColor = '#0f172a';
+                else if (isAbsent) dotColor = '#f59e0b';
+                else if (trainer) dotColor = trainer.color;
+
+                return `
+                    <div id="row-${slot.id}" class="${rowClasses}">
+                        <!-- Gauche : Horaire & Intitulé -->
+                        <div class="flex items-start gap-4 min-w-0 flex-grow">
+                            <div class="shrink-0 w-24 pt-0.5">
+                                <div class="font-mono text-xs font-semibold text-slate-800">
+                                    ${slot.start} – ${slot.end}
+                                </div>
+                                <div class="text-[11px] text-slate-400">
+                                    ${dur} min
+                                </div>
+                            </div>
+
+                            <div class="min-w-0 flex-grow space-y-1">
+                                ${(isTheoHere || isAbsent) ? `
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        ${isTheoHere ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-white inline-flex items-center gap-1"><i data-lucide="clock" class="w-2.5 h-2.5 text-amber-400"></i> Créneau théorique</span>` : ''}
+                                        ${isAbsent ? `<span class="text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded">Formateur absent J${day}</span>` : ''}
+                                    </div>
+                                ` : ''}
+
+                                <div class="text-sm font-medium leading-snug ${slot.done && !isCurrent ? 'line-through text-slate-500' : isBreak ? 'text-slate-500' : 'text-slate-900 font-semibold'}">
+                                    ${slot.title}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Droite : Formateur, Lien & Action -->
+                        <div class="flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+                            ${isAssignable ? `
+                                <div class="relative flex items-center">
+                                    <span class="w-2 h-2 rounded-full absolute left-2.5 pointer-events-none" style="background-color:${dotColor}"></span>
+                                    <select onchange="assignTrainer('${slot.id}', this.value)" class="rounded-lg border ${isAbsent ? 'border-amber-300 bg-amber-50/70' : 'border-slate-200 bg-white hover:border-slate-300'} pl-6 pr-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                        <option value="" ${slot.trainer === '' ? 'selected' : ''}>Non attribué</option>
+                                        <option value="all" ${slot.trainer === 'all' ? 'selected' : ''}>Tous les formateurs</option>
+                                        <optgroup label="Présents Jour ${day}">
+                                            ${presentTrainers.map(t => `<option value="${t.id}" ${slot.trainer === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                                        </optgroup>
+                                        ${absentTrainers.length > 0 ? `
+                                            <optgroup label="Absents Jour ${day}">
+                                                ${absentTrainers.map(t => `<option value="${t.id}" ${slot.trainer === t.id ? 'selected' : ''}>${t.name} (Absent)</option>`).join('')}
+                                            </optgroup>
+                                        ` : ''}
+                                    </select>
+                                </div>
+                            ` : ''}
+
+                            ${linkHtml}
+                            ${statusControlsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function assignTrainer(slotId, trainerId) {
+            const slot = state.schedule.find(s => s.id === slotId);
+            if (slot) {
+                slot.trainer = trainerId;
+                saveState(false);
+                renderTrainers();
+                renderSchedule();
+                tickClock();
+            }
+        }
+
+        // --- GESTION DES LIENS FICHIERS ---
+        function openLinkModal(slotId) {
+            const slot = state.schedule.find(s => s.id === slotId);
+            if (!slot) return;
+            document.getElementById('link-slot-id').value = slot.id;
+            document.getElementById('link-slot-subtitle').textContent = `${slot.start} — ${slot.title}`;
+            document.getElementById('link-url-input').value = slot.linkUrl || '';
+            document.getElementById('link-label-input').value = slot.linkLabel || '';
+            document.getElementById('link-modal').classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function saveLinkForm(e) {
+            e.preventDefault();
+            const id = document.getElementById('link-slot-id').value;
+            const slot = state.schedule.find(s => s.id === id);
+            if (slot) {
+                slot.linkUrl = document.getElementById('link-url-input').value.trim();
+                slot.linkLabel = document.getElementById('link-label-input').value.trim();
+                saveState(true);
+                renderSchedule();
+                tickClock();
+            }
+            closeModal('link-modal');
+        }
+
+        function clearSlotLink() {
+            const id = document.getElementById('link-slot-id').value;
+            const slot = state.schedule.find(s => s.id === id);
+            if (slot) {
+                slot.linkUrl = '';
+                slot.linkLabel = '';
+                saveState(true);
+                renderSchedule();
+                tickClock();
+            }
+            closeModal('link-modal');
+        }
+
+        // --- RÉINITIALISATION ---
+        function openResetModal() {
+            document.getElementById('reset-modal').classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function confirmReset() {
+            state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+            saveState(true);
+            closeModal('reset-modal');
+            updateTeamPanelVisibility();
+            renderAll();
+            tickClock();
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
